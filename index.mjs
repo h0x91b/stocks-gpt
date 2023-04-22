@@ -1,8 +1,11 @@
-const axios = require('axios');
-const xml2js = require('xml2js');
-const fs = require('fs');
-const yargs = require('yargs/yargs');
-const { hideBin } = require('yargs/helpers');
+import axios from 'axios';
+import xml2js from 'xml2js';
+import fs from 'fs';
+import yargs from 'yargs';
+import { hideBin } from 'yargs/helpers';
+import dotenv from 'dotenv';
+import OpenAI from 'openai';
+
 const argv = yargs(hideBin(process.argv)).options({
   e: {
     alias: 'excel',
@@ -35,8 +38,8 @@ const argv = yargs(hideBin(process.argv)).options({
   return true;
 }).argv;
 
-require('dotenv').config();
-const { Configuration, OpenAIApi } = require("openai");
+dotenv.config();
+const { Configuration, OpenAIApi } = OpenAI;
 
 const configuration = new Configuration({
   apiKey: process.env.OPENAI_API_KEY,
