@@ -18,6 +18,11 @@ const argv = yargs(hideBin(process.argv))
       describe: "Get top 3 company per category by news",
       type: "boolean",
     },
+    a: {
+      alias: "analyze",
+      describe: "Analyze company news",
+      type: "boolean",
+    },
     s: {
       alias: "stock",
       describe: "Stock symbol",
@@ -28,6 +33,13 @@ const argv = yargs(hideBin(process.argv))
       describe: "Maximum number of news items to retrieve",
       type: "number",
       default: 100,
+    },
+    m: {
+      alias: "model",
+      describe: "Model to use for analysis",
+      type: "string",
+      choices: ["gpt-3.5-turbo", "gpt-4"],
+      default: "gpt-3.5-turbo",
     },
   })
   .check((argv) => {
@@ -54,7 +66,7 @@ const openai = new OpenAIApi(configuration);
 
 async function shortenText(text) {
   const completion = await openai.createChatCompletion({
-    model: "gpt-3.5-turbo",
+    model: argv.model,
     messages: [
       {
         role: "system",
@@ -79,7 +91,7 @@ async function shortenText(text) {
 async function getForecast(text, stockSymbol) {
   const forecastPrompt = `analyze the data provided and give a score from -5 to 5 on how positive the news is in terms of growth in the share price of company called ${stockSymbol} output the score only, if NA then 0`;
   const completion = await openai.createChatCompletion({
-    model: "gpt-3.5-turbo",
+    model: argv.model,
     messages: [
       { role: "system", content: forecastPrompt },
       { role: "user", content: text },
@@ -100,6 +112,24 @@ async function getForecast(text, stockSymbol) {
   } catch (error) {
     return 0;
   }
+}
+
+async function analyzeCompany(text, stockSymbol) {
+  const prompt = `Act as an experienced trader, analyze the following last news about "${stockSymbol}".
+1) Make a list of facts. Put in parentheses an estimate of how this fact may affect the share price in the short term, possible options: negative, neutral, positive
+2) Create the detailed analysis of facts above in terms of price change of "${stockSymbol}" in short term.
+3) Give your estimate of how much the price of "${stockSymbol}" will change in the next 24 hours, specify the estimated range of growth or drop, e.g: Positive 3-5%.
+`;
+  const completion = await openai.createChatCompletion({
+    model: argv.model,
+    messages: [
+      { role: "system", content: prompt },
+      { role: "user", content: text },
+    ],
+    max_tokens: argv.model === "gpt-3.5-turbo" ? 650 : 1000,
+    temperature: 0,
+  });
+  return completion.data.choices[0].message.content;
 }
 
 // Helper function to get text content safely
@@ -240,15 +270,38 @@ async function getTopCompaniesByNews() {
   }
 }
 
+async function analyze() {
+  if (!argv.stock) {
+    console.error(
+      "Error: Please provide a stock symbol with the -s option when using the --analyze operation."
+    );
+    process.exit(1);
+  }
+  try {
+    const newsData = fs.readFileSync(`out/${argv.stock}.txt`, "utf-8");
+    const newsLines = newsData.split("\n");
+    let newsItems = newsLines.slice(1).filter(line => line.trim() !== '');
+    if(argv.model === "gpt-3.5-turbo") {
+      newsItems = newsItems.slice(-20);
+    }
+    const analyzedNews = await analyzeCompany(newsItems.join("\n"), argv.stock);
+    console.log("Analyzed News:", analyzedNews);
+  } catch (error) {
+    console.error("Error: Failed to read the news data file.", error.message, error?.response?.data);
+  }
+}
+
 // Main function to handle command-line arguments and output the result to a file
 async function main() {
   if (argv.excel) {
     await getNewsForCompanyInExcelFormat(argv.stock, argv.count);
   } else if (argv.top) {
     await getTopCompaniesByNews();
+  } else if(argv.analyze) {
+    await analyze();
   } else {
     console.error(
-      "Error: Please choose an operation: either --excel or --top."
+      "Error: Please choose an operation: either --excel, --top, --analyze."
     );
     process.exit(1);
   }
