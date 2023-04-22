@@ -217,7 +217,7 @@ async function getNewsForCompanyInExcelFormat(stockSymbol, max = 100) {
 
   try {
     const tabSeparatedText = await parseXmlToTabSeparated(url, stockSymbol);
-    fs.writeFileSync("out/"+stockSymbol + ".txt", tabSeparatedText);
+    fs.writeFileSync("out/" + stockSymbol + ".txt", tabSeparatedText);
     console.log(`The parsed data has been saved to out/${stockSymbol}.txt`);
   } catch (error) {
     console.error("Error: Failed to parse the RSS feed.", error.message);
@@ -236,13 +236,11 @@ async function getTopCompaniesByNews() {
       const companyName = companies[symbol];
       const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${symbol}&region=US&lang=en-US&count=3`;
       companyNewsPromises.push(
-        axios
-          .get(url)
-          .then((response) => ({
-            symbol,
-            companyName,
-            xmlString: response.data,
-          }))
+        axios.get(url).then((response) => ({
+          symbol,
+          companyName,
+          xmlString: response.data,
+        }))
       );
     }
 
@@ -299,14 +297,18 @@ async function analyze() {
   try {
     const newsData = fs.readFileSync(`out/${argv.stock}.txt`, "utf-8");
     const newsLines = newsData.split("\n");
-    let newsItems = newsLines.slice(1).filter(line => line.trim() !== '');
-    if(argv.model === "gpt-3.5-turbo") {
+    let newsItems = newsLines.slice(1).filter((line) => line.trim() !== "");
+    if (argv.model === "gpt-3.5-turbo") {
       newsItems = newsItems.slice(-20);
     }
     const analyzedNews = await analyzeCompany(newsItems.join("\n"), argv.stock);
     console.log("Analyzed News:", analyzedNews);
   } catch (error) {
-    console.error("Error: Failed to read the news data file.", error.message, error?.response?.data);
+    console.error(
+      "Error: Failed to read the news data file.",
+      error.message,
+      error?.response?.data
+    );
   }
 }
 
@@ -316,7 +318,7 @@ async function main() {
     await getNewsForCompanyInExcelFormat(argv.stock, argv.count);
   } else if (argv.top) {
     await getTopCompaniesByNews();
-  } else if(argv.analyze) {
+  } else if (argv.analyze) {
     await analyze();
   } else {
     console.error(
