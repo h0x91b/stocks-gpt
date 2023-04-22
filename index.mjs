@@ -115,11 +115,22 @@ async function getForecast(text, stockSymbol) {
 }
 
 async function analyzeCompany(text, stockSymbol) {
-  const prompt = `Act as an experienced trader, analyze the providen last news about "${stockSymbol}".
-1) List facts with share price impact (short term): negative, neutral, positive.
-2) Create the detailed analysis of facts above in terms of price change of "${stockSymbol}" in short term.
-3) Give your estimate of how much the price of "${stockSymbol}" will change in the next 24 hours, specify the estimated growth or drop, e.g: Positive 5%.
-`;
+  // variant 1
+//   const prompt = `Act as an experienced trader, analyze the providen last news about "${stockSymbol}".
+// 1) List facts with share price impact (short term): negative, neutral, positive.
+// 2) Create the detailed analysis of facts above in terms of price change of "${stockSymbol}" in short term.
+// 3) Give your estimate of how much the price of "${stockSymbol}" will change in the next 24 hours, specify the estimated growth or drop, e.g: Positive 5%.
+// `;
+
+  // variant 2
+//   const prompt = `As an expert trader, analyze the latest news concerning "${stockSymbol}":
+
+// * Identify and categorize short-term share price impacts based on recent events: negative, neutral, and positive.
+// * Provide a comprehensive analysis of the identified events, focusing on their potential effects on the short-term price movement of "${stockSymbol}".
+// * Offer a prediction for the price change of "${stockSymbol}" within the next 24 hours, specifying the estimated percentage of increase or decrease (e.g., Positive 5%).`
+  
+  // variant 3
+  const prompt = `As a proficient trader, thoroughly examine the most recent updates regarding "${stockSymbol}". Begin by assessing and classifying the short-term influences on share price resulting from recent developments as negative, neutral, or positive. Next, conduct an in-depth evaluation of these influences, emphasizing their potential impact on near-term price fluctuations of "${stockSymbol}". Finally, present a well-informed forecast for the price variation of "${stockSymbol}" over the next 24 hours, specifying the anticipated percentage of growth or decline (e.g., Positive 5%).`;
   const completion = await openai.createChatCompletion({
     model: argv.model,
     messages: [
