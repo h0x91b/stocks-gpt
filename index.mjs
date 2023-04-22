@@ -76,8 +76,8 @@ async function shortenText(text) {
   return completion.data.choices[0].message.content;
 }
 
-async function getForecast(text) {
-  const forecastPrompt = `analyze the data provided and give a score from -5 to 5 on how positive the news is in terms of growth in the share price of company called TSLA output the score only, if NA then 0`;
+async function getForecast(text, stockSymbol) {
+  const forecastPrompt = `analyze the data provided and give a score from -5 to 5 on how positive the news is in terms of growth in the share price of company called ${stockSymbol} output the score only, if NA then 0`;
   const completion = await openai.createChatCompletion({
     model: "gpt-3.5-turbo",
     messages: [
@@ -116,7 +116,7 @@ function getTextContentSafely(element, tagName) {
 }
 
 // Function to parse the XML and convert it into tab-separated text
-async function parseXmlToTabSeparated(url) {
+async function parseXmlToTabSeparated(url, stockSymbol) {
   // Download the XML content
   const response = await axios.get(url);
   const xmlString = response.data;
@@ -141,7 +141,7 @@ async function parseXmlToTabSeparated(url) {
     const title = getTextContentSafely(items[i], "title");
     let description = getTextContentSafely(items[i], "description");
     const pubDate = getTextContentSafely(items[i], "pubDate");
-    const forecast = await getForecast(title + "\n" + description);
+    const forecast = await getForecast(title + "\n" + description, stockSymbol);
     console.log("Forecast: %s", forecast);
     if (description.length > 500) {
       description = await shortenText(description);
@@ -167,7 +167,7 @@ async function getNewsForCompanyInExcelFormat(stockSymbol, max = 100) {
   const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${stockSymbol}&region=US&lang=en-US&count=${max}`;
 
   try {
-    const tabSeparatedText = await parseXmlToTabSeparated(url);
+    const tabSeparatedText = await parseXmlToTabSeparated(url, stockSymbol);
     fs.writeFileSync("out/"+stockSymbol + ".txt", tabSeparatedText);
     console.log(`The parsed data has been saved to out/${stockSymbol}.txt`);
   } catch (error) {
