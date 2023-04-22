@@ -115,10 +115,10 @@ async function getForecast(text, stockSymbol) {
 }
 
 async function analyzeCompany(text, stockSymbol) {
-  const prompt = `Act as an experienced trader, analyze the following last news about "${stockSymbol}".
-1) Make a list of facts. Put in parentheses an estimate of how this fact may affect the share price in the short term, possible options: negative, neutral, positive
+  const prompt = `Act as an experienced trader, analyze the providen last news about "${stockSymbol}".
+1) List facts with share price impact (short term): negative, neutral, positive.
 2) Create the detailed analysis of facts above in terms of price change of "${stockSymbol}" in short term.
-3) Give your estimate of how much the price of "${stockSymbol}" will change in the next 24 hours, specify the estimated range of growth or drop, e.g: Positive 3-5%.
+3) Give your estimate of how much the price of "${stockSymbol}" will change in the next 24 hours, specify the estimated growth or drop, e.g: Positive 5%.
 `;
   const completion = await openai.createChatCompletion({
     model: argv.model,
