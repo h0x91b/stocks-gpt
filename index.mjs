@@ -158,54 +158,65 @@ function getTextContentSafely(element, tagName) {
     return "";
   }
 
-  // Check if the child element has attributes, and if so, get the text content from the '_' property
-  return typeof childElement[0] === "object" && "_" in childElement[0]
-    ? childElement[0]._
-    : childElement[0];
+  const textContent =
+    typeof childElement[0] === "object" && "_" in childElement[0]
+      ? childElement[0]._
+      : childElement[0];
+
+  return textContent.replace(/\n/g, " ");
 }
 
-// Function to parse the XML and convert it into tab-separated text
-async function parseXmlToTabSeparated(url, stockSymbol) {
-  // Download the XML content
-  const response = await axios.get(url);
-  const xmlString = response.data;
+async function parseXmlToObjects(urls, stockSymbol) {
+  let newsObjects = [];
 
-  // Parse the XML string
-  const parser = new xml2js.Parser();
-  const parsedXml = await parser.parseStringPromise(xmlString);
+  let i = 0;
+  for (const url of urls) {
+    console.log("Processing url %s", url);
+    const response = await axios.get(url);
+    const xmlString = response.data;
 
-  // Extract data from the parsed XML
-  const items = parsedXml.rss.channel[0].item;
-  let result = "Title\tDescription\tPublication Date\tForecast\tGUID\tLink\n"; // Add headers
+    const parser = new xml2js.Parser();
+    const parsedXml = await parser.parseStringPromise(xmlString);
 
-  // Sort items by date in ascending order (newest at the bottom)
-  items.sort(
-    (a, b) =>
-      new Date(getTextContentSafely(a, "pubDate")) -
-      new Date(getTextContentSafely(b, "pubDate"))
-  );
+    const items = parsedXml.rss.channel[0].item;
 
-  for (let i = 0; i < items.length; i++) {
-    console.log("Processing item %s of %s", i + 1, items.length);
-    const title = getTextContentSafely(items[i], "title");
-    let description = getTextContentSafely(items[i], "description");
-    const pubDate = getTextContentSafely(items[i], "pubDate");
-    const forecast = await getForecast(title + "\n" + description, stockSymbol);
-    console.log("Forecast: %s", forecast);
-    if (description.length > 500) {
-      description = await shortenText(description);
+    for (const item of items) {
+      console.log("Processing item %s", ++i);
+      const title = getTextContentSafely(item, "title");
+      let description = getTextContentSafely(item, "description");
+      const pubDate = new Date(getTextContentSafely(item, "pubDate"));
+      const link = getTextContentSafely(item, "link");
+
+      const forecast = await getForecast(title + " " + description, stockSymbol);
+      console.log("Forecast: %s", forecast);
+      if (description.length > 500) {
+        description = await shortenText(description);
+      }
+
+      newsObjects.push({
+        title,
+        description,
+        pubDate,
+        forecast,
+        link,
+      });
     }
-    const guid = getTextContentSafely(items[i], "guid");
-    const link = getTextContentSafely(items[i], "link");
+  }
 
-    // Add the extracted data to the result string as a tab-separated row
-    result += `${title}\t${description}\t${pubDate}\t${forecast}\t${guid}\t${link}\n`;
+  return newsObjects;
+}
+
+function convertObjectsToTabSeparated(newsObjects) {
+  let result = "Title\tDescription\tPublication Date\tForecast\tLink\n";
+
+  for (const newsObject of newsObjects) {
+    result += `${newsObject.title}\t${newsObject.description}\t${newsObject.pubDate.toISOString()}\t${newsObject.forecast}\t${newsObject.link}\n`;
   }
 
   return result;
 }
 
-async function getNewsForCompanyInExcelFormat(stockSymbol, max = 100) {
+async function getNewsForCompanyInExcelFormat(stockSymbol, max = 50) {
   if (!stockSymbol) {
     console.error(
       "Error: Please provide a stock symbol as a command-line argument."
@@ -213,11 +224,16 @@ async function getNewsForCompanyInExcelFormat(stockSymbol, max = 100) {
     process.exit(1);
   }
 
-  const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${stockSymbol}&region=US&lang=en-US&count=${max}`;
+  const yahooUrl = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${stockSymbol}&region=US&lang=en-US&count=${max}`;
+  const nasdaqUrl = `https://www.nasdaq.com/feed/rssoutbound?symbol=${stockSymbol}`;
 
   try {
-    const tabSeparatedText = await parseXmlToTabSeparated(url, stockSymbol);
-    fs.writeFileSync("out/" + stockSymbol + ".txt", tabSeparatedText);
+    const newsObjects = await parseXmlToObjects([yahooUrl, nasdaqUrl], stockSymbol);
+    newsObjects.sort((a, b) => a.pubDate - b.pubDate);
+
+    const tabSeparatedText = convertObjectsToTabSeparated(newsObjects);
+    fs.writeFileSync(`out/${stockSymbol}.txt`, tabSeparatedText);
+    fs.writeFileSync(`out/${stockSymbol}.json`, JSON.stringify(newsObjects, null, 2));
     console.log(`The parsed data has been saved to out/${stockSymbol}.txt`);
   } catch (error) {
     console.error("Error: Failed to parse the RSS feed.", error.message);
