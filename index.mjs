@@ -215,22 +215,24 @@ async function getTopCompaniesByNews() {
       const items = parsedXml.rss.channel[0].item;
 
       if (items.length > 0) {
-        const latestPubDate = items.reduce((latest, item) => {
+        const totalPubDate = items.reduce((total, item) => {
           const pubDate = new Date(getTextContentSafely(item, "pubDate"));
-          return pubDate > latest ? pubDate : latest;
-        }, new Date(0));
+          return total + pubDate.getTime();
+        }, 0);
 
-        companyNewsWithDates.push({ symbol, companyName, latestPubDate });
+        const avgPubDate = new Date(totalPubDate / items.length);
+
+        companyNewsWithDates.push({ symbol, companyName, avgPubDate });
       }
     }
 
-    companyNewsWithDates.sort((a, b) => b.latestPubDate - a.latestPubDate);
+    companyNewsWithDates.sort((a, b) => b.avgPubDate - a.avgPubDate);
 
-    console.log(`Top 3 companies in ${category} by latest news:`);
+    console.log(`Top 3 most active companies in ${category} by latest news:`);
     companyNewsWithDates.slice(0, 3).forEach((company, index) => {
       console.log(
         `${index + 1}. ${company.companyName} (${company.symbol}) - ${
-          company.latestPubDate
+          company.avgPubDate
         }`
       );
     });
