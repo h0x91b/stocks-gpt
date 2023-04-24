@@ -114,17 +114,23 @@ const configuration = new Configuration({
 const openai = new OpenAIApi(configuration);
 
 async function shortenText(text) {
-  const completion = await openai.createChatCompletion({
-    model: argv.model,
-    messages: [
-      {
-        role: "system",
-        content:
-          "Make text shorter, but do not remove important and financial data",
-      },
-      { role: "user", content: text },
-    ],
-  });
+  console.log("Shortening text from %s chars", text.length);
+  const completion = await openai.createChatCompletion(
+    {
+      model: argv.model,
+      messages: [
+        {
+          role: "system",
+          content:
+            "Make text shorter, but do not remove important and financial data",
+        },
+        { role: "user", content: text },
+      ],
+    },
+    {
+      timeout: 60000,
+    }
+  );
   console.log(
     "Shortened text from %s to %s chars",
     text.length,
@@ -217,8 +223,21 @@ function getTextContentSafely(element, tagName) {
       ? childElement[0]._
       : childElement[0];
 
+  if (textContent && typeof textContent.replace !== "function") {
+    return "";
+  }
   textContent = textContent?.replace(/\n/g, " ")?.trim();
   return textContent || "";
+}
+
+async function getNewsItem(stockSymbol, link) {
+  try {
+    const str = fs.readFileSync(`out/${stockSymbol}.json`, "utf8");
+    const obj = JSON.parse(str);
+    return obj.find((item) => item.link === link);
+  } catch (error) {
+    return null;
+  }
 }
 
 async function parseXmlToObjects(urls, stockSymbol) {
@@ -234,7 +253,7 @@ async function parseXmlToObjects(urls, stockSymbol) {
     const parsedXml = await parser.parseStringPromise(xmlString);
 
     const items = parsedXml.rss.channel[0].item;
-    let delay = 100;
+    let delayTime = 100;
 
     for (const item of items) {
       console.log("Processing item %s", ++i);
@@ -245,21 +264,29 @@ async function parseXmlToObjects(urls, stockSymbol) {
           break;
         } catch (error) {
           console.log(
-            "Error: %s, delay request for %s",
+            "Error: %s, delay request for %sms",
             error.message,
-            delay,
+            delayTime,
             error?.response?.data
           );
-          await delay(delay);
-          delay *= 2;
+          await delay(delayTime);
+          delayTime *= 2;
         }
       }
 
       async function processItem() {
+        const link = getTextContentSafely(item, "link");
+        const cachedItem = await getNewsItem(stockSymbol, link);
+        if (cachedItem) {
+          console.log("Item already cached, skipping");
+          cachedItem.pubDate = new Date(cachedItem.pubDate);
+          newsObjects.push(cachedItem);
+          return;
+        }
+
         const title = getTextContentSafely(item, "title");
         let description = getTextContentSafely(item, "description");
         const pubDate = new Date(getTextContentSafely(item, "pubDate"));
-        const link = getTextContentSafely(item, "link");
 
         const forecast = await getForecast(
           title + " " + description,
@@ -267,6 +294,7 @@ async function parseXmlToObjects(urls, stockSymbol) {
         );
         console.log("Forecast: %s", forecast);
         if (description.length > 500) {
+          await delay(argv.delay);
           description = await shortenText(description);
         }
 
@@ -277,6 +305,8 @@ async function parseXmlToObjects(urls, stockSymbol) {
           forecast,
           link,
         });
+        // dump to HD
+        await dumpNews(stockSymbol, newsObjects);
       }
     }
   }
@@ -296,6 +326,10 @@ function convertObjectsToTabSeparated(newsObjects) {
   }
 
   return result;
+}
+
+async function dumpNews(stockSymbol, news) {
+  fs.writeFileSync(`out/${stockSymbol}.json`, JSON.stringify(news, null, 2));
 }
 
 async function getNewsForCompanyInExcelFormat(stockSymbol, max = 50) {
@@ -318,10 +352,7 @@ async function getNewsForCompanyInExcelFormat(stockSymbol, max = 50) {
 
     const tabSeparatedText = convertObjectsToTabSeparated(newsObjects);
     fs.writeFileSync(`out/${stockSymbol}.txt`, tabSeparatedText);
-    fs.writeFileSync(
-      `out/${stockSymbol}.json`,
-      JSON.stringify(newsObjects, null, 2)
-    );
+    await dumpNews(stockSymbol, newsObjects);
     console.log(`The parsed data has been saved to out/${stockSymbol}.txt`);
   } catch (error) {
     console.error("Error: Failed to parse the RSS feed.", error.message);
