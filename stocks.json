@@ -10,10 +10,10 @@
     "IBM": "IBM",
     "ADBE": "Adobe",
     "CRM": "Salesforce",
-    "AVGO": "Broadcom"
+    "AVGO": "Broadcom",
+    "AMZN": "Amazon"
   },
   "Consumer Discretionary": {
-    "AMZN": "Amazon",
     "NKE": "Nike",
     "MCD": "McDonald's",
     "SBUX": "Starbucks",
