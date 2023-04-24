@@ -191,14 +191,14 @@ async function getForecast(text, stockSymbol) {
 
 async function extractFacts(text, stockSymbol) {
   const prompt = `Act as an experienced trader, analyze the providen last news about "${stockSymbol}".
-Make a numbered list of facts about "${stockSymbol}". In each fact put in parentheses impact to share price: negative, neutral, positive.
+Make a numbered list of facts about "${stockSymbol}" with their date time.
 Ignore all facts that are not related to the company.
 
 Example:
 --------
-1) The company announced a new product, which will be released in 2021. (positive)
-2) The company announced bad cash flow. (negative)
-3) Large outflows were detected at the company. (negative)`;
+1) 2022-01-10T18:31:38.000Z: The company announced a new product, which will be released in 2021
+2) 2022-03-10T20:15:38.000Z: The company announced bad cash flow
+3) 2023-04-24T14:47:55.000Z: Large outflows were detected at the company`;
   const completion = await openai.createChatCompletion(
     {
       model: "gpt-3.5-turbo",
@@ -218,21 +218,26 @@ Example:
 }
 
 async function analyzeCompany(text, stockSymbol) {
-  const facts = (await extractFacts(text, stockSymbol)).split("\n");
+  let facts = (await extractFacts(text, stockSymbol)).split("\n");
   console.log("================================");
   console.log("Extracted facts:", facts);
 
-  const toDrop = await question(
-    "Enter the numbers of the facts to drop (comma separated): "
-  );
-  const dropIndices = toDrop
-    .split(",")
-    .map(Number)
-    .sort((a, b) => b - a);
+  const toDrop = (
+    await question("Enter the numbers of the facts to drop (comma separated): ")
+  ).split(",");
+  if (toDrop.length > 1) {
+    const dropIndices = toDrop.map(Number).sort((a, b) => b - a);
 
-  for (const index of dropIndices) {
-    facts.splice(index - 1, 1);
+    for (const index of dropIndices) {
+      facts.splice(index - 1, 1);
+    }
   }
+  // 2) 2022-03-10T20:15:38.000Z: The company announced bad cash flow
+  // regex to cut out "2) 2022-03-10T20:15:38.000Z: "
+  facts = facts.map((fact) => {
+    const regex = /(\d+\)\s\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}\.\d{3}Z:\s)/;
+    return fact.replace(regex, "");
+  });
 
   console.log("================================");
   console.log("Updated facts:", facts);
@@ -264,7 +269,7 @@ async function analyzeCompany(text, stockSymbol) {
           content: facts.join("\n"),
         },
       ],
-      max_tokens: argv.model === "gpt-3.5-turbo" ? 250 : 1000,
+      max_tokens: argv.model === "gpt-3.5-turbo" ? 600 : 1500,
       temperature: 0,
     },
     {
@@ -418,6 +423,7 @@ async function getNewsForCompanyInExcelFormat(stockSymbol, max = 50) {
     fs.writeFileSync(`out/${stockSymbol}.txt`, tabSeparatedText);
     await dumpNews(stockSymbol, newsObjects);
     console.log(`The parsed data has been saved to out/${stockSymbol}.txt`);
+    rl.close();
   } catch (error) {
     console.error("Error: Failed to parse the RSS feed.", error.message);
   }
