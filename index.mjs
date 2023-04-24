@@ -7,6 +7,15 @@ import dotenv from "dotenv";
 import OpenAI from "openai";
 
 import pLimit from "p-limit";
+import readline from "readline";
+import { promisify } from "util";
+
+const rl = readline.createInterface({
+  input: process.stdin,
+  output: process.stdout,
+});
+
+const question = promisify(rl.question).bind(rl);
 
 const argv = yargs(hideBin(process.argv))
   .options({
@@ -180,33 +189,88 @@ async function getForecast(text, stockSymbol) {
   }
 }
 
+async function extractFacts(text, stockSymbol) {
+  const prompt = `Act as an experienced trader, analyze the providen last news about "${stockSymbol}".
+Make a numbered list of facts about "${stockSymbol}". In each fact put in parentheses impact to share price: negative, neutral, positive.
+Ignore all facts that are not related to the company.
+
+Example:
+--------
+1) The company announced a new product, which will be released in 2021. (positive)
+2) The company announced bad cash flow. (negative)
+3) Large outflows were detected at the company. (negative)`;
+  const completion = await openai.createChatCompletion(
+    {
+      model: "gpt-3.5-turbo",
+      messages: [
+        { role: "system", content: prompt },
+        { role: "user", content: text },
+      ],
+      max_tokens: 450,
+      temperature: 0,
+    },
+    {
+      timeout: 60000,
+    }
+  );
+  await delay(argv.delay);
+  return completion.data.choices[0].message.content;
+}
+
 async function analyzeCompany(text, stockSymbol) {
+  const facts = (await extractFacts(text, stockSymbol)).split("\n");
+  console.log("================================");
+  console.log("Extracted facts:", facts);
+
+  const toDrop = await question(
+    "Enter the numbers of the facts to drop (comma separated): "
+  );
+  const dropIndices = toDrop
+    .split(",")
+    .map(Number)
+    .sort((a, b) => b - a);
+
+  for (const index of dropIndices) {
+    facts.splice(index - 1, 1);
+  }
+
+  console.log("================================");
+  console.log("Updated facts:", facts);
+  rl.close();
+
   const prompts = [
-    `Act as an experienced trader, analyze the providen last news about "${stockSymbol}".
-1) List facts with share price impact (short term): negative, neutral, positive.
-2) Create the detailed analysis of facts above in terms of price change of "${stockSymbol}" in short term.
-3) Give your estimate of how much the price of "${stockSymbol}" will change in the next 24 hours, specify the estimated growth or drop, e.g: Positive 5%.
+    `Act as an experienced trader, analyze the providen facts about "${stockSymbol}".
+1) Create the detailed analysis of facts above in terms of price change of "${stockSymbol}" in short term.
+2) Give your estimate of how much the price of "${stockSymbol}" will change in the next 8 hours, specify the estimated growth or drop, e.g: Positive 5%.
 `,
 
-    `As an expert trader, analyze the latest news concerning "${stockSymbol}":
+    `As an expert trader, analyze the latest facts concerning "${stockSymbol}":
 
-* Identify and categorize short-term share price impacts based on recent events: negative, neutral, and positive.
 * Provide a comprehensive analysis of the identified events, focusing on their potential effects on the short-term price movement of "${stockSymbol}".
-* Offer a prediction for the price change of "${stockSymbol}" within the next 24 hours, specifying the estimated percentage of increase or decrease (e.g., Positive 5%).
+* Offer a prediction for the price change of "${stockSymbol}" within the next 8 hours, specifying the estimated percentage of increase or decrease (e.g., Positive 5%).
 `,
 
-    `As a proficient trader, thoroughly examine the most recent updates regarding "${stockSymbol}". Begin by assessing and classifying the short-term influences on share price resulting from recent developments as negative, neutral, or positive. Next, conduct an in-depth evaluation of these influences, emphasizing their potential impact on near-term price fluctuations of "${stockSymbol}". Finally, present a well-informed forecast for the price variation of "${stockSymbol}" over the next 24 hours, specifying the anticipated percentage of growth or decline (e.g., Positive 5%).`,
+    `As a proficient trader, thoroughly examine the most recent facts regarding "${stockSymbol}". Conduct an in-depth evaluation of these influences, emphasizing their potential impact on near-term price fluctuations of "${stockSymbol}". Finally, present a well-informed forecast for the price variation of "${stockSymbol}" over the next 8 hours, specifying the anticipated percentage of growth or decline (e.g., Positive 5%).`,
   ];
+  console.log("================================");
   const prompt = prompts[argv.prompt - 1];
-  const completion = await openai.createChatCompletion({
-    model: argv.model,
-    messages: [
-      { role: "system", content: prompt },
-      { role: "user", content: text },
-    ],
-    max_tokens: argv.model === "gpt-3.5-turbo" ? 650 : 1000,
-    temperature: 0,
-  });
+  const completion = await openai.createChatCompletion(
+    {
+      model: argv.model,
+      messages: [
+        { role: "system", content: prompt },
+        {
+          role: "user",
+          content: facts.join("\n"),
+        },
+      ],
+      max_tokens: argv.model === "gpt-3.5-turbo" ? 250 : 1000,
+      temperature: 0,
+    },
+    {
+      timeout: 60000,
+    }
+  );
   await delay(argv.delay);
   return completion.data.choices[0].message.content;
 }
@@ -420,10 +484,10 @@ async function analyze() {
     const newsLines = newsData.split("\n");
     let newsItems = newsLines.slice(1).filter((line) => line.trim() !== "");
     if (argv.model === "gpt-3.5-turbo") {
-      newsItems = newsItems.slice(-20);
+      newsItems = newsItems.slice(-28);
     }
     const analyzedNews = await analyzeCompany(newsItems.join("\n"), argv.stock);
-    console.log("Analyzed News:", analyzedNews);
+    console.log(analyzedNews);
   } catch (error) {
     console.error(
       "Error: Failed to read the news data file.",
