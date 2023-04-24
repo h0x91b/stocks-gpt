@@ -1,74 +1,59 @@
 {
   "Information Technology": {
-    "AAPL": "Apple Inc.",
-    "MSFT": "Microsoft Corporation",
-    "AMZN": "Amazon.com Inc.",
-    "GOOGL": "Alphabet Inc.",
-    "FB": "Facebook Inc.",
-    "NVDA": "NVIDIA Corporation",
-    "AMD": "Advanced Micro Devices Inc.",
-    "INTC": "Intel Corporation",
-    "ADBE": "Adobe Inc.",
-    "PYPL": "PayPal Holdings Inc."
+    "AAPL": "Apple",
+    "MSFT": "Microsoft",
+    "GOOGL": "Alphabet (parent company of Google)",
+    "FB": "Meta (formerly known as Facebook)",
+    "INTC": "Intel",
+    "CSCO": "Cisco",
+    "QCOM": "Qualcomm",
+    "IBM": "IBM",
+    "ADBE": "Adobe",
+    "CRM": "Salesforce",
+    "AVGO": "Broadcom"
   },
-  "Banking and Finance": {
-    "JPM": "JPMorgan Chase & Co.",
-    "V": "Visa Inc.",
-    "MA": "Mastercard Incorporated",
-    "BAC": "Bank of America Corporation",
-    "PYPL": "PayPal Holdings Inc.",
-    "GS": "Goldman Sachs Group Inc.",
-    "MS": "Morgan Stanley",
-    "AXP": "American Express Company",
-    "SCHW": "Charles Schwab Corporation",
-    "BX": "The Blackstone Group Inc."
+  "Consumer Discretionary": {
+    "AMZN": "Amazon",
+    "NKE": "Nike",
+    "MCD": "McDonald's",
+    "SBUX": "Starbucks",
+    "DIS": "Walt Disney",
+    "CAT": "Caterpillar"
   },
-  "Automotive": {
-    "TSLA": "Tesla Inc.",
-    "GM": "General Motors Company",
-    "F": "Ford Motor Company",
-    "NIO": "NIO Inc.",
-    "RACE": "Ferrari N.V.",
-    "TM": "Toyota Motor Corporation",
-    "VOW3": "Volkswagen AG",
-    "HMC": "Honda Motor Co. Ltd.",
-    "HYMTF": "Hyundai Motor Company",
-    "DAI": "Daimler AG"
+  "Communication Services": {
+    "T": "AT&T",
+    "ZM": "Zoom",
+    "NFLX": "Netflix"
   },
-  "Healthcare": {
-    "JNJ": "Johnson & Johnson",
-    "PFE": "Pfizer Inc.",
-    "UNH": "UnitedHealth Group Incorporated",
-    "ABT": "Abbott Laboratories",
-    "MRNA": "Moderna Inc.",
-    "MRK": "Merck & Co. Inc.",
-    "BMY": "Bristol-Myers Squibb Company",
-    "NVS": "Novartis AG",
-    "AMGN": "Amgen Inc.",
-    "TMO": "Thermo Fisher Scientific Inc."
+  "Health Care": {
+    "ABT": "Abbott",
+    "JNJ": "J & J (Johnson & Johnson)",
+    "BMY": "Bristol Myers",
+    "MRK": "Merck",
+    "GILD": "Gilead",
+    "BIIB": "Biogen"
   },
-  "Consumer Goods": {
-    "AMZN": "Amazon.com Inc.",
-    "NKE": "Nike Inc.",
-    "PG": "Procter & Gamble Company",
-    "KO": "The Coca-Cola Company",
-    "PEP": "PepsiCo Inc.",
-    "MCD": "McDonald's Corporation",
-    "HD": "The Home Depot Inc.",
-    "WMT": "Walmart Inc.",
-    "DIS": "The Walt Disney Company",
-    "COST": "Costco Wholesale Corporation"
+  "Financials": {
+    "MA": "Mastercard",
+    "V": "Visa",
+    "BRK.B": "Berkshire Hathaway"
   },
-  "Energy": {
-    "NEE": "NextEra Energy Inc.",
-    "TSLA": "Tesla Inc.",
-    "XOM": "Exxon Mobil Corporation",
-    "CVX": "Chevron Corporation",
-    "COP": "ConocoPhillips",
-    "BP": "BP plc",
-    "RDS-A": "Royal Dutch Shell plc",
-    "TOT": "Total SE",
-    "PSX": "Phillips 66",
-    "VLO": "Valero Energy Corporation"
+  "Consumer Staples": {
+    "KO": "Coca Cola",
+    "WMT": "Walmart",
+    "CL": "Colgate-Palmolive",
+    "PM": "Philip Morris"
+  },
+  "Industrials": {
+    "MMM": "3M"
+  },
+  "Information Services": {
+    "BIDU": "Baidu"
+  },
+  "Utilities": {
+    "VZ": "Verizon"
+  },
+  "Financial Technology": {
+    "PYPL": "PayPal"
   }
 }

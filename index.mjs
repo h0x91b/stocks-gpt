@@ -6,6 +6,8 @@ import { hideBin } from "yargs/helpers";
 import dotenv from "dotenv";
 import OpenAI from "openai";
 
+import pLimit from "p-limit";
+
 const argv = yargs(hideBin(process.argv))
   .options({
     e: {
@@ -41,6 +43,12 @@ const argv = yargs(hideBin(process.argv))
       type: "number",
       default: 100,
     },
+    d: {
+      alias: "delay",
+      describe: "Delay between requests in ms",
+      type: "number",
+      default: 500,
+    },
     m: {
       alias: "model",
       describe: "Model to use for analysis",
@@ -64,6 +72,40 @@ const argv = yargs(hideBin(process.argv))
   }).argv;
 
 dotenv.config();
+
+const limit = pLimit(3);
+
+const fetchCompanyNews = async (symbol, companyName) => {
+  const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${symbol}&region=US&lang=en-US&count=3`;
+
+  const response = await axios.get(url, {
+    headers: {
+      "User-Agent":
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/89.0.4389.114 Safari/537.36",
+    },
+  });
+
+  await delay(argv.delay);
+
+  return {
+    symbol,
+    companyName,
+    xmlString: response.data,
+  };
+};
+
+const fetchAllCompanyNews = async (companies) => {
+  const tasks = [];
+
+  for (const symbol in companies) {
+    const companyName = companies[symbol];
+
+    tasks.push(limit(() => fetchCompanyNews(symbol, companyName)));
+  }
+
+  return Promise.all(tasks);
+};
+
 const { Configuration, OpenAIApi } = OpenAI;
 
 const configuration = new Configuration({
@@ -88,11 +130,16 @@ async function shortenText(text) {
     text.length,
     completion.data.choices[0].message.content.length
   );
+  await delay(argv.delay);
   if (completion.data.choices[0].message.content.length > text.length) {
     console.log("Shortening failed, returning original text");
     return text;
   }
   return completion.data.choices[0].message.content;
+}
+
+async function delay(ms) {
+  return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
 async function getForecast(text, stockSymbol) {
@@ -106,6 +153,7 @@ async function getForecast(text, stockSymbol) {
     max_tokens: 25,
     temperature: 0,
   });
+  await delay(argv.delay);
 
   try {
     const regex = /(-?\d+)/;
@@ -148,6 +196,7 @@ async function analyzeCompany(text, stockSymbol) {
     max_tokens: argv.model === "gpt-3.5-turbo" ? 650 : 1000,
     temperature: 0,
   });
+  await delay(argv.delay);
   return completion.data.choices[0].message.content;
 }
 
@@ -182,24 +231,40 @@ async function parseXmlToObjects(urls, stockSymbol) {
 
     for (const item of items) {
       console.log("Processing item %s", ++i);
-      const title = getTextContentSafely(item, "title");
-      let description = getTextContentSafely(item, "description");
-      const pubDate = new Date(getTextContentSafely(item, "pubDate"));
-      const link = getTextContentSafely(item, "link");
 
-      const forecast = await getForecast(title + " " + description, stockSymbol);
-      console.log("Forecast: %s", forecast);
-      if (description.length > 500) {
-        description = await shortenText(description);
+      while (true) {
+        try {
+          await processItem();
+          break;
+        } catch (error) {
+          console.log("Error: %s", error, error);
+          await delay(5000);
+        }
       }
 
-      newsObjects.push({
-        title,
-        description,
-        pubDate,
-        forecast,
-        link,
-      });
+      async function processItem() {
+        const title = getTextContentSafely(item, "title");
+        let description = getTextContentSafely(item, "description");
+        const pubDate = new Date(getTextContentSafely(item, "pubDate"));
+        const link = getTextContentSafely(item, "link");
+
+        const forecast = await getForecast(
+          title + " " + description,
+          stockSymbol
+        );
+        console.log("Forecast: %s", forecast);
+        if (description.length > 500) {
+          description = await shortenText(description);
+        }
+
+        newsObjects.push({
+          title,
+          description,
+          pubDate,
+          forecast,
+          link,
+        });
+      }
     }
   }
 
@@ -210,7 +275,11 @@ function convertObjectsToTabSeparated(newsObjects) {
   let result = "Title\tDescription\tPublication Date\tForecast\tLink\n";
 
   for (const newsObject of newsObjects) {
-    result += `${newsObject.title}\t${newsObject.description}\t${newsObject.pubDate.toISOString()}\t${newsObject.forecast}\t${newsObject.link}\n`;
+    result += `${newsObject.title}\t${
+      newsObject.description
+    }\t${newsObject.pubDate.toISOString()}\t${newsObject.forecast}\t${
+      newsObject.link
+    }\n`;
   }
 
   return result;
@@ -228,12 +297,18 @@ async function getNewsForCompanyInExcelFormat(stockSymbol, max = 50) {
   const nasdaqUrl = `https://www.nasdaq.com/feed/rssoutbound?symbol=${stockSymbol}`;
 
   try {
-    const newsObjects = await parseXmlToObjects([yahooUrl, nasdaqUrl], stockSymbol);
+    const newsObjects = await parseXmlToObjects(
+      [yahooUrl, nasdaqUrl],
+      stockSymbol
+    );
     newsObjects.sort((a, b) => a.pubDate - b.pubDate);
 
     const tabSeparatedText = convertObjectsToTabSeparated(newsObjects);
     fs.writeFileSync(`out/${stockSymbol}.txt`, tabSeparatedText);
-    fs.writeFileSync(`out/${stockSymbol}.json`, JSON.stringify(newsObjects, null, 2));
+    fs.writeFileSync(
+      `out/${stockSymbol}.json`,
+      JSON.stringify(newsObjects, null, 2)
+    );
     console.log(`The parsed data has been saved to out/${stockSymbol}.txt`);
   } catch (error) {
     console.error("Error: Failed to parse the RSS feed.", error.message);
@@ -246,21 +321,7 @@ async function getTopCompaniesByNews() {
 
   for (const category of categories) {
     const companies = stocks[category];
-    const companyNewsPromises = [];
-
-    for (const symbol in companies) {
-      const companyName = companies[symbol];
-      const url = `https://feeds.finance.yahoo.com/rss/2.0/headline?s=${symbol}&region=US&lang=en-US&count=3`;
-      companyNewsPromises.push(
-        axios.get(url).then((response) => ({
-          symbol,
-          companyName,
-          xmlString: response.data,
-        }))
-      );
-    }
-
-    const companyNewsList = await Promise.all(companyNewsPromises);
+    const companyNewsList = await fetchAllCompanyNews(companies);
 
     const parser = new xml2js.Parser();
     const companyNewsWithDates = [];

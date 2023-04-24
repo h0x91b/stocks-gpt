@@ -3,12 +3,13 @@
 Define OPENAI_API_KEY in .env file
 
 # Usage
+
 ```bash
 # get most active stocks
 node . --top
 
 # get news
-SYMBOL=AMZN
+SYMBOL=MSFT
 node . --excel -c 40 -s $SYMBOL
 
 # analyze news
@@ -18,8 +19,6 @@ node . --analyze -s $SYMBOL
 node . --analyze -s $SYMBOL -m gpt-4
 ```
 
-
-
 # Example:
 
 ## Top news
@@ -27,15 +26,15 @@ node . --analyze -s $SYMBOL -m gpt-4
 ```bash
 D:\src\stocks-gpt>node . --top
 Top 3 most active companies in Information Technology by latest news:
-1. Alphabet Inc. (GOOGL) - Sat Apr 22 2023 13:51:40 GMT+0300 (Israel Daylight Time) 
+1. Alphabet Inc. (GOOGL) - Sat Apr 22 2023 13:51:40 GMT+0300 (Israel Daylight Time)
 2. Amazon.com Inc. (AMZN) - Sat Apr 22 2023 12:58:39 GMT+0300 (Israel Daylight Time)
-3. Apple Inc. (AAPL) - Sat Apr 22 2023 09:32:00 GMT+0300 (Israel Daylight Time)     
+3. Apple Inc. (AAPL) - Sat Apr 22 2023 09:32:00 GMT+0300 (Israel Daylight Time)
 
 
 Top 3 most active companies in Banking and Finance by latest news:
 1. Bank of America Corporation (BAC) - Sat Apr 22 2023 13:56:48 GMT+0300 (Israel Daylight Time)
-2. JPMorgan Chase & Co. (JPM) - Sat Apr 22 2023 10:56:19 GMT+0300 (Israel Daylight Time)       
-3. PayPal Holdings Inc. (PYPL) - Sat Apr 22 2023 07:32:19 GMT+0300 (Israel Daylight Time)      
+2. JPMorgan Chase & Co. (JPM) - Sat Apr 22 2023 10:56:19 GMT+0300 (Israel Daylight Time)
+3. PayPal Holdings Inc. (PYPL) - Sat Apr 22 2023 07:32:19 GMT+0300 (Israel Daylight Time)
 
 
 Top 3 most active companies in Automotive by latest news:
@@ -63,7 +62,6 @@ Top 3 most active companies in Energy by latest news:
 
 ```
 
-
 ## News for a specific stock
 
 ```bash
@@ -86,7 +84,7 @@ Analyzed News: 1) List of facts:
 - A bull market is coming, and Amazon is one of the two FAANG stocks to buy right now. (Positive)
 
 2) Analysis:
-Overall, the news surrounding Amazon is mostly positive. The successful defeat of the antitrust lawsuit and the prediction of strong retail sales for March and April are both positive indicators for the company. The rise in stock price and the bullish call from JPMorgan also suggest that investors are optimistic about Amazon's future. However, the news of job cuts at Whole Foods and the 
+Overall, the news surrounding Amazon is mostly positive. The successful defeat of the antitrust lawsuit and the prediction of strong retail sales for March and April are both positive indicators for the company. The rise in stock price and the bullish call from JPMorgan also suggest that investors are optimistic about Amazon's future. However, the news of job cuts at Whole Foods and the
 underperformance of Amazon's stock compared to the S&P 500 over the past three years may cause some concern. Additionally, the uncertainty surrounding the future of Whole Foods and Jeff Bezos' statement about 2023 being a year of efficiency may lead to some caution among investors.
 
 3) Estimate:
