@@ -144,15 +144,20 @@ async function delay(ms) {
 
 async function getForecast(text, stockSymbol) {
   const forecastPrompt = `analyze the data provided and give a score from -5 to 5 on how positive the news is in terms of growth in the share price of company called ${stockSymbol} output the score only, if NA then 0`;
-  const completion = await openai.createChatCompletion({
-    model: argv.model,
-    messages: [
-      { role: "system", content: forecastPrompt },
-      { role: "user", content: text },
-    ],
-    max_tokens: 25,
-    temperature: 0,
-  });
+  const completion = await openai.createChatCompletion(
+    {
+      model: argv.model,
+      messages: [
+        { role: "system", content: forecastPrompt },
+        { role: "user", content: text },
+      ],
+      max_tokens: 25,
+      temperature: 0,
+    },
+    {
+      timeout: 60000,
+    }
+  );
   await delay(argv.delay);
 
   try {
@@ -207,12 +212,13 @@ function getTextContentSafely(element, tagName) {
     return "";
   }
 
-  const textContent =
+  let textContent =
     typeof childElement[0] === "object" && "_" in childElement[0]
       ? childElement[0]._
       : childElement[0];
 
-  return textContent.replace(/\n/g, " ");
+  textContent = textContent?.replace(/\n/g, " ")?.trim();
+  return textContent || "";
 }
 
 async function parseXmlToObjects(urls, stockSymbol) {
@@ -228,6 +234,7 @@ async function parseXmlToObjects(urls, stockSymbol) {
     const parsedXml = await parser.parseStringPromise(xmlString);
 
     const items = parsedXml.rss.channel[0].item;
+    let delay = 100;
 
     for (const item of items) {
       console.log("Processing item %s", ++i);
@@ -237,8 +244,14 @@ async function parseXmlToObjects(urls, stockSymbol) {
           await processItem();
           break;
         } catch (error) {
-          console.log("Error: %s", error, error);
-          await delay(5000);
+          console.log(
+            "Error: %s, delay request for %s",
+            error.message,
+            delay,
+            error?.response?.data
+          );
+          await delay(delay);
+          delay *= 2;
         }
       }
 
